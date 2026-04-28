@@ -30,14 +30,10 @@ from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics import confusion_matrix, classification_report
 
-# COMMAND ----------
 
-# DBTITLE 1,Importing Dataset
-# Define the column names
 DATASET_COLUMNS = ["sentiment", "ids", "date", "flag", "user", "text"]
 
 # Load the CSV file with Pandas (Optimized for local execution)
-# Note: Ensure the CSV file is in the same directory or provide the correct local path
 dataset_path = 'training_1600000_processed_noemoticon.csv'
 if os.path.exists(dataset_path):
     dataset = pd.read_csv(dataset_path, 
@@ -47,15 +43,11 @@ else:
     print(f"Error: {dataset_path} not found. Please place the dataset in the script folder.")
     exit()
 
-# Manually assign column names
 dataset.columns = DATASET_COLUMNS
 
-# Show the first few rows of the Pandas DataFrame
 dataset.head()
 
-# COMMAND ----------
 
-# DBTITLE 1,Preparing Dataset
 # Removing the unnecessary columns
 dataset = dataset[['sentiment','text']]
 
@@ -70,9 +62,7 @@ ax.set_xticklabels(['Negative','Positive'], rotation=0)
 # Storing data in lists
 text, sentiment = list(dataset['text']), list(dataset['sentiment'])
 
-# COMMAND ----------
 
-# DBTITLE 1,Defining Dictonaries
 # Defining dictionary containing all emojis with their meanings
 emojis = {':)': 'smile', ':-)': 'smile', ';d': 'wink', ':-E': 'vampire', ':(': 'sad',
           ':-(': 'sad', ':-<': 'sad', ':P': 'raspberry', ':O': 'surprised',
@@ -100,9 +90,8 @@ stopwordlist = ['a', 'about', 'above', 'after', 'again', 'ain', 'all', 'am', 'an
              'why', 'will', 'with', 'won', 'y', 'you', "youd","youll", "youre",
              "youve", 'your', 'yours', 'yourself', 'yourselves']
 
-# COMMAND ----------
 
-# DBTITLE 1,Preprocessing Text
+# Preprocessing Text
 def preprocess(textdata):
     processedText = []
     
@@ -119,16 +108,12 @@ def preprocess(textdata):
     for tweet in textdata:
         tweet = tweet.lower()
         
-        # Replace all URls with 'URL'
+        # Replacing 
         tweet = re.sub(urlPattern,' URL',tweet)
-        # Replace all emojis
         for emoji in emojis.keys():
             tweet = tweet.replace(emoji, "EMOJI" + emojis[emoji])        
-        # Replace @USERNAME to 'USER'
         tweet = re.sub(userPattern,' USER', tweet)        
-        # Replace all non alphabets
         tweet = re.sub(alphaPattern, " ", tweet)
-        # Replace 3 or more consecutive letters by 2 letter
         tweet = re.sub(sequencePattern, seqReplacePattern, tweet)
 
         tweetwords = ''
@@ -144,17 +129,14 @@ def preprocess(textdata):
         
     return processedText
 
-# COMMAND ----------
 
-# DBTITLE 1,Time Taken
 t = time.time()
 processedtext = preprocess(text)
 print(f'Text Preprocessing complete.')
 print(f'Time Taken: {round(time.time()-t)} seconds')
 
-# COMMAND ----------
 
-# DBTITLE 1,WordCloud Negative
+# WordCloud Negative
 dataset_proc = pd.DataFrame({'text': processedtext, 'sentiment': sentiment})
 data_neg = dataset_proc[dataset_proc['sentiment'] == 0]['text']
 plt.figure(figsize = (20,20))
@@ -164,9 +146,8 @@ plt.imshow(wc)
 plt.axis('off')
 plt.show()
 
-# COMMAND ----------
 
-# DBTITLE 1,WordCloud Positive
+# WordCloud Positive
 data_pos = dataset_proc[dataset_proc['sentiment'] == 1]['text']
 wc = WordCloud(max_words = 1000 , width = 1600 , height = 800,
               collocations=False).generate(" ".join(data_pos))
@@ -175,31 +156,27 @@ plt.imshow(wc)
 plt.axis('off')
 plt.show()
 
-# COMMAND ----------
 
-# DBTITLE 1,Splitting Data
+# Splitting Data
 X_train, X_test, y_train, y_test = train_test_split(processedtext, sentiment,
                                                     test_size = 0.05, random_state = 0)
 print(f'Data Split done.')
 
-# COMMAND ----------
 
-# DBTITLE 1,TD-IDF Vectoriser
+# TD-IDF Vectoriser
 vectoriser = TfidfVectorizer(ngram_range=(1,2), max_features=500000)
 vectoriser.fit(X_train)
 print(f'Vectoriser fitted.')
 print('No. of feature_words: ', len(vectoriser.get_feature_names_out())) 
 
-# COMMAND ----------
 
-# DBTITLE 1,TD-IDF Vectoriser
+# TD-IDF Vectoriser
 X_train = vectoriser.transform(X_train)
 X_test  = vectoriser.transform(X_test)
 print(f'Data Transformed.')
 
-# COMMAND ----------
 
-# DBTITLE 1,Creating and Evaluating Models
+# Creating and Evaluating Models
 def model_Evaluate(model): 
 
     # Predict values for Test dataset
@@ -223,31 +200,27 @@ def model_Evaluate(model):
     plt.title ("Confusion Matrix", fontdict = {'size':18}, pad = 20)
     plt.show()
 
-# COMMAND ----------
 
-# DBTITLE 1,BernoulliNB Model
+# BernoulliNB Model
 BNBmodel = BernoulliNB(alpha = 2)
 BNBmodel.fit(X_train, y_train)
 model_Evaluate(BNBmodel)
 
 
-# COMMAND ----------
 
-# DBTITLE 1,Linear SVC Model
+# Linear SVC Model
 SVCmodel = LinearSVC()
 SVCmodel.fit(X_train, y_train)
 model_Evaluate(SVCmodel)
 
-# COMMAND ----------
 
-# DBTITLE 1,Logistic Regression Model
+# Logistic Regression Model
 LRmodel = LogisticRegression(C = 2, max_iter = 1000, n_jobs=-1)
 LRmodel.fit(X_train, y_train)
 model_Evaluate(LRmodel)
 
-# COMMAND ----------
 
-# DBTITLE 1,Saving the Models
+# Saving the Models
 file = open('vectoriser-ngram-(1,2).pickle','wb')
 pickle.dump(vectoriser, file) 
 file.close()
@@ -260,9 +233,8 @@ file = open('Sentiment-BNB.pickle','wb')
 pickle.dump(BNBmodel, file)
 file.close()
 
-# COMMAND ----------
 
-# DBTITLE 1,Using the Models
+# Using the Models
 def load_models():
     '''
     Replace '..path/' by the path of the saved models.
@@ -284,7 +256,7 @@ def predict(vectoriser, model, text):
     textdata = vectoriser.transform(preprocess(text))
     sentiment = model.predict(textdata)
 
-     # Make a list of text with sentiment
+     # Making a list of text with sentiment
     data = []
     for text, pred in zip(text, sentiment):
         data.append((text,pred))
@@ -295,7 +267,6 @@ def predict(vectoriser, model, text):
     return df
 
 if __name__=="__main__":
-    # If you want to use pre-trained models, uncomment the next line:
     # vectoriser, LRmodel = load_models()
     
     # Text to classify should be in a list
