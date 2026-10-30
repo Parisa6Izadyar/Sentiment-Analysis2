@@ -1,0 +1,32 @@
+name: Validate sentiment analysis
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      MPLBACKEND: Agg
+      OMP_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: python -m pip install -r requirements.txt
+      - run: python -m pytest -q
+      - run: python -m sentiment_analysis demo
+      - name: Predict with the saved demo pipeline
+        run: python -m sentiment_analysis predict --model results/demo/sentiment_pipeline.joblib --text "I enjoyed this film" "This was disappointing"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sentiment-demo-check
+          path: |
+            results/demo/metrics.json
+            results/demo/confusion_matrices.png
